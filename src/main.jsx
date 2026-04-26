@@ -2,10 +2,18 @@ import React, { useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { jsPDF } from "jspdf";
 import imageCompression from "browser-image-compression";
+import heic2any from "heic2any";
 import "./styles.css";
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const ACCEPTED_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
 const PRESETS = ["Homework", "Notes", "Receipts", "Forms"];
 const QUALITY_OPTIONS = {
   High: { maxSizeMB: 2.5, quality: 0.92 },
@@ -36,12 +44,36 @@ function isAcceptedImage(file) {
   );
 }
 
+function isHeicImage(file) {
+  const lowerName = file.name.toLowerCase();
+  return (
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    lowerName.endsWith(".heic") ||
+    lowerName.endsWith(".heif")
+  );
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
     reader.readAsDataURL(file);
+  });
+}
+
+async function convertHeicToJpeg(file) {
+  const converted = await heic2any({
+    blob: file,
+    toType: "image/jpeg",
+    quality: 0.9,
+  });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const outputName = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+  return new File([blob], outputName, {
+    type: "image/jpeg",
+    lastModified: file.lastModified,
   });
 }
 
@@ -60,12 +92,14 @@ function loadImage(src) {
 }
 
 async function createPageFromFile(file, index) {
-  const dataUrl = await readFileAsDataUrl(file);
+  const processedFile = isHeicImage(file) ? await convertHeicToJpeg(file) : file;
+  const dataUrl = await readFileAsDataUrl(processedFile);
   await loadImage(dataUrl);
 
   return {
     id: createPageId(file, index),
     file,
+    processedFile,
     dataUrl,
     rotation: 0,
   };
@@ -98,7 +132,7 @@ async function prepareImageForPdf(page, compressImages, quality) {
   let dataUrl = page.dataUrl;
 
   if (compressImages) {
-    const compressed = await imageCompression(page.file, {
+    const compressed = await imageCompression(page.processedFile || page.file, {
       maxSizeMB: QUALITY_OPTIONS[quality].maxSizeMB,
       maxWidthOrHeight: 2200,
       initialQuality: QUALITY_OPTIONS[quality].quality,
@@ -118,12 +152,31 @@ function getFilename(settings) {
   return `${lastName}_${className}_${assignment}.pdf`;
 }
 
+function estimatePdfSize(pages, settings) {
+  if (!pages.length) return 0;
+  const pageOverhead = pages.length * 80 * 1024;
+  const sourceBytes = pages.reduce((sum, page) => sum + (page.processedFile || page.file).size, 0);
+
+  if (!settings.compressImages) {
+    return Math.round(sourceBytes * 1.05 + pageOverhead);
+  }
+
+  const presetLimit = QUALITY_OPTIONS[settings.quality].maxSizeMB * 1024 * 1024;
+  const estimatedImages = pages.reduce(
+    (sum, page) => sum + Math.min((page.processedFile || page.file).size, presetLimit),
+    0,
+  );
+  return Math.round(estimatedImages * 0.9 + pageOverhead);
+}
+
 function App() {
   const inputRef = useRef(null);
   const [pages, setPages] = useState([]);
   const [errors, setErrors] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedPageId, setDraggedPageId] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [lastExportSize, setLastExportSize] = useState(null);
   const [settings, setSettings] = useState({
     lastName: "",
     className: "",
@@ -136,6 +189,10 @@ function App() {
   const totalSize = useMemo(
     () => pages.reduce((sum, page) => sum + page.file.size, 0),
     [pages],
+  );
+  const estimatedPdfSize = useMemo(
+    () => estimatePdfSize(pages, settings),
+    [pages, settings],
   );
 
   async function addFiles(fileList) {
@@ -153,7 +210,7 @@ function App() {
     );
     const nextErrors = [
       ...rejected.map(
-        (file) => `${file.name} is not supported. Please upload JPG, PNG, or WEBP images.`,
+        (file) => `${file.name} is not supported. Please upload JPG, PNG, WEBP, HEIC, or HEIF images.`,
       ),
       ...unreadableFiles.map((file) => `${file.name} could not be loaded as an image.`),
     ];
@@ -161,19 +218,30 @@ function App() {
     setErrors(nextErrors);
     if (nextPages.length) {
       setPages((current) => [...current, ...nextPages]);
+      setLastExportSize(null);
     }
   }
 
-  function movePage(index, direction) {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= pages.length) return;
-
+  function reorderPages(fromIndex, targetIndex) {
+    if (fromIndex === targetIndex || fromIndex < 0 || targetIndex < 0) return;
     setPages((current) => {
+      if (fromIndex >= current.length || targetIndex >= current.length) return current;
       const copy = [...current];
-      const [page] = copy.splice(index, 1);
+      const [page] = copy.splice(fromIndex, 1);
       copy.splice(targetIndex, 0, page);
       return copy;
     });
+    setLastExportSize(null);
+  }
+
+  function movePage(index, direction) {
+    reorderPages(index, index + direction);
+  }
+
+  function dropPage(targetIndex) {
+    const fromIndex = pages.findIndex((page) => page.id === draggedPageId);
+    reorderPages(fromIndex, targetIndex);
+    setDraggedPageId(null);
   }
 
   function rotatePage(id) {
@@ -182,10 +250,23 @@ function App() {
         page.id === id ? { ...page, rotation: (page.rotation + 90) % 360 } : page,
       ),
     );
+    setLastExportSize(null);
   }
 
   function removePage(id) {
     setPages((current) => current.filter((page) => page.id !== id));
+    setLastExportSize(null);
+  }
+
+  function clearPages() {
+    setPages([]);
+    setErrors([]);
+    setLastExportSize(null);
+  }
+
+  function updateSettings(nextSettings) {
+    setSettings(nextSettings);
+    setLastExportSize(null);
   }
 
   async function exportPdf() {
@@ -218,6 +299,8 @@ function App() {
         pdf.addImage(image.dataUrl, "JPEG", x, y, width, height);
       }
 
+      const pdfBlob = pdf.output("blob");
+      setLastExportSize(pdfBlob.size);
       pdf.save(getFilename(settings));
     } catch (error) {
       setErrors([error.message || "Something went wrong while creating the PDF."]);
@@ -241,6 +324,7 @@ function App() {
         <div className="status-strip" aria-label="Current upload summary">
           <span>{pages.length} image{pages.length === 1 ? "" : "s"}</span>
           <span>{formatBytes(totalSize)} original size</span>
+          <span>{formatBytes(estimatedPdfSize)} estimated PDF</span>
           <span>Processed locally</span>
         </div>
       </section>
@@ -265,7 +349,7 @@ function App() {
               ref={inputRef}
               className="sr-only"
               type="file"
-              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
               multiple
               onChange={(event) => {
                 addFiles(event.target.files);
@@ -274,13 +358,18 @@ function App() {
             />
             <div>
               <h2>Upload homework images</h2>
-              <p>Drag files here or choose JPG, PNG, and WEBP images from your device.</p>
+              <p>Drag files here or choose JPG, PNG, WEBP, HEIC, or HEIF images from your device.</p>
             </div>
             <button type="button" onClick={() => inputRef.current?.click()}>
               Choose images
             </button>
           </div>
-          <p className="trust-badge">Local-only: files never leave your browser.</p>
+          <div className="builder-meta">
+            <p className="trust-badge">Local-only: files never leave your browser.</p>
+            <button type="button" className="clear-button" onClick={clearPages} disabled={!pages.length}>
+              Clear all pages
+            </button>
+          </div>
 
           {errors.length > 0 && (
             <div className="error-list" role="alert">
@@ -303,7 +392,18 @@ function App() {
               </div>
             ) : (
               pages.map((page, index) => (
-                <article className="page-card" key={page.id}>
+                <article
+                  className={`page-card ${draggedPageId === page.id ? "is-reordering" : ""}`}
+                  key={page.id}
+                  draggable
+                  onDragStart={() => setDraggedPageId(page.id)}
+                  onDragEnd={() => setDraggedPageId(null)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    dropPage(index);
+                  }}
+                >
                   <div className="thumb-frame">
                     <img
                       src={page.dataUrl}
@@ -315,6 +415,7 @@ function App() {
                     <strong>Page {index + 1}</strong>
                     <span>{page.file.name}</span>
                     <span>{formatBytes(page.file.size)}</span>
+                    {isHeicImage(page.file) && <span>Converted locally for PDF export</span>}
                   </div>
                   <div className="page-actions">
                     <button type="button" onClick={() => movePage(index, -1)} disabled={index === 0}>
@@ -351,7 +452,7 @@ function App() {
             <input
               type="text"
               value={settings.lastName}
-              onChange={(event) => setSettings({ ...settings, lastName: event.target.value })}
+              onChange={(event) => updateSettings({ ...settings, lastName: event.target.value })}
               placeholder="Garcia"
             />
           </label>
@@ -360,7 +461,7 @@ function App() {
             <input
               type="text"
               value={settings.className}
-              onChange={(event) => setSettings({ ...settings, className: event.target.value })}
+              onChange={(event) => updateSettings({ ...settings, className: event.target.value })}
               placeholder="Biology"
             />
           </label>
@@ -370,7 +471,7 @@ function App() {
               type="text"
               value={settings.assignmentName}
               onChange={(event) =>
-                setSettings({ ...settings, assignmentName: event.target.value })
+                updateSettings({ ...settings, assignmentName: event.target.value })
               }
               placeholder="Lab 4"
             />
@@ -379,7 +480,7 @@ function App() {
             Preset
             <select
               value={settings.preset}
-              onChange={(event) => setSettings({ ...settings, preset: event.target.value })}
+              onChange={(event) => updateSettings({ ...settings, preset: event.target.value })}
             >
               {PRESETS.map((preset) => (
                 <option key={preset}>{preset}</option>
@@ -391,7 +492,7 @@ function App() {
               type="checkbox"
               checked={settings.compressImages}
               onChange={(event) =>
-                setSettings({ ...settings, compressImages: event.target.checked })
+                updateSettings({ ...settings, compressImages: event.target.checked })
               }
             />
             Compress images before export
@@ -400,7 +501,7 @@ function App() {
             Quality
             <select
               value={settings.quality}
-              onChange={(event) => setSettings({ ...settings, quality: event.target.value })}
+              onChange={(event) => updateSettings({ ...settings, quality: event.target.value })}
               disabled={!settings.compressImages}
             >
               {Object.keys(QUALITY_OPTIONS).map((quality) => (
@@ -417,9 +518,26 @@ function App() {
           >
             {isExporting ? "Generating PDF..." : "Download PDF"}
           </button>
+          <p className="size-preview">
+            Estimated PDF size: {formatBytes(estimatedPdfSize)}
+            {lastExportSize ? ` | Last export: ${formatBytes(lastExportSize)}` : ""}
+          </p>
           <p className="export-reminder">Open your PDF once before submitting.</p>
           <p className="filename-preview">{getFilename(settings)}</p>
         </aside>
+      </section>
+
+      <section className="info-section" aria-label="Sample workflow">
+        <div className="section-heading">
+          <p className="eyebrow">Sample workflow</p>
+          <h2>From photos to a submission-ready PDF.</h2>
+        </div>
+        <div className="workflow-grid">
+          <article className="info-card">Upload photos from your phone, screenshots, or desktop.</article>
+          <article className="info-card">Drag pages into order, then rotate any sideways images.</article>
+          <article className="info-card">Export one PDF with a clean assignment filename.</article>
+          <article className="info-card">Open the PDF once before submitting it.</article>
+        </div>
       </section>
 
       <section className="pricing-section" aria-label="Upgrade options">

@@ -160,6 +160,15 @@ h3 {
   padding: 18px;
 }
 
+.builder-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
 .upload-zone {
   align-items: center;
   border-style: dashed;
@@ -224,18 +233,28 @@ h3 {
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.92rem;
-  margin-top: 12px;
   padding: 8px 12px;
 }
 
 .trust-badge {
   background: #eef8f2;
   color: #276443;
+  margin: 0;
 }
 
 .warning-note {
   background: #fff7e8;
   color: #7b5318;
+  margin-top: 12px;
+}
+
+.clear-button {
+  background: #f3f6f7;
+  color: #394a51;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: #e3ebee;
 }
 
 .thumbnail-list {
@@ -255,6 +274,14 @@ h3 {
   display: grid;
   gap: 12px;
   padding: 12px;
+}
+
+.page-card[draggable="true"] {
+  cursor: grab;
+}
+
+.page-card.is-reordering {
+  opacity: 0.58;
 }
 
 .thumb-frame {
@@ -366,6 +393,17 @@ select:focus {
   text-align: center;
 }
 
+.size-preview {
+  background: #eef8f2;
+  border-radius: 10px;
+  color: #276443;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin-bottom: 0;
+  padding: 10px 12px;
+  text-align: center;
+}
+
 .filename-preview {
   background: #f3f6f7;
   border-radius: 10px;
@@ -399,6 +437,12 @@ select:focus {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.workflow-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .pricing-card {
@@ -447,7 +491,8 @@ select:focus {
 @media (max-width: 920px) {
   .hero,
   .workspace,
-  .pricing-grid {
+  .pricing-grid,
+  .workflow-grid {
     grid-template-columns: 1fr;
   }
 
@@ -477,6 +522,14 @@ select:focus {
   }
 
   .upload-zone button {
+    width: 100%;
+  }
+
+  .builder-meta {
+    align-items: stretch;
+  }
+
+  .clear-button {
     width: 100%;
   }
 }
