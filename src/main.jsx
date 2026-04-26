@@ -20,6 +20,7 @@ const QUALITY_OPTIONS = {
   Medium: { maxSizeMB: 1.2, quality: 0.78 },
   "Small file": { maxSizeMB: 0.55, quality: 0.62 },
 };
+const FREE_PAGE_LIMIT = 5;
 
 function formatBytes(bytes) {
   if (!bytes) return "0 B";
@@ -176,6 +177,7 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPageId, setDraggedPageId] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [lastExportSize, setLastExportSize] = useState(null);
   const [settings, setSettings] = useState({
     lastName: "",
@@ -194,6 +196,7 @@ function App() {
     () => estimatePdfSize(pages, settings),
     [pages, settings],
   );
+  const isOverFreeLimit = pages.length > FREE_PAGE_LIMIT;
 
   async function addFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -271,6 +274,10 @@ function App() {
 
   async function exportPdf() {
     if (!pages.length) return;
+    if (isOverFreeLimit) {
+      setIsProModalOpen(true);
+      return;
+    }
     setIsExporting(true);
     setErrors([]);
 
@@ -325,6 +332,7 @@ function App() {
           <span>{pages.length} image{pages.length === 1 ? "" : "s"}</span>
           <span>{formatBytes(totalSize)} original size</span>
           <span>{formatBytes(estimatedPdfSize)} estimated PDF</span>
+          <span>Free: up to {FREE_PAGE_LIMIT} pages</span>
           <span>Processed locally</span>
         </div>
       </section>
@@ -383,6 +391,23 @@ function App() {
             <p className="warning-note" role="status">
               Large PDFs may take longer to generate.
             </p>
+          )}
+
+          {isOverFreeLimit && (
+            <section className="upgrade-card" aria-label="Upgrade to Pro">
+              <div>
+                <p className="eyebrow">Free limit reached</p>
+                <h2>{pages.length} pages added</h2>
+                <p>
+                  Free mode exports up to {FREE_PAGE_LIMIT} pages per PDF. Remove a few pages
+                  or preview Pro for unlimited pages, compression presets, and saved filename
+                  templates.
+                </p>
+              </div>
+              <button type="button" onClick={() => setIsProModalOpen(true)}>
+                Unlock Pro
+              </button>
+            </section>
           )}
 
           <div className="thumbnail-list" aria-label="Uploaded pages">
@@ -514,10 +539,15 @@ function App() {
             type="button"
             className="export-button"
             onClick={exportPdf}
-            disabled={!pages.length || isExporting}
+            disabled={!pages.length || isExporting || isOverFreeLimit}
           >
-            {isExporting ? "Generating PDF..." : "Download PDF"}
+            {isExporting ? "Generating PDF..." : isOverFreeLimit ? "Free limit reached" : "Download PDF"}
           </button>
+          {isOverFreeLimit && (
+            <button type="button" className="unlock-button" onClick={() => setIsProModalOpen(true)}>
+              Unlock Pro
+            </button>
+          )}
           <p className="size-preview">
             Estimated PDF size: {formatBytes(estimatedPdfSize)}
             {lastExportSize ? ` | Last export: ${formatBytes(lastExportSize)}` : ""}
@@ -549,7 +579,7 @@ function App() {
           <article className="pricing-card">
             <div>
               <h3>Free</h3>
-              <p>Up to 5 images</p>
+              <p>Up to {FREE_PAGE_LIMIT} pages per PDF</p>
             </div>
             <span className="price">$0</span>
           </article>
@@ -558,7 +588,9 @@ function App() {
               <h3>Pro</h3>
               <p>Unlimited pages, compression presets, saved naming templates</p>
             </div>
-            <span className="price">Soon</span>
+            <button type="button" className="unlock-button" onClick={() => setIsProModalOpen(true)}>
+              Unlock Pro
+            </button>
           </article>
         </div>
       </section>
@@ -592,6 +624,27 @@ function App() {
         <strong>SubmitReady PDF</strong>
         <span>Local-first image to PDF tool for students</span>
       </footer>
+
+      {isProModalOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsProModalOpen(false);
+          }}
+        >
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="pro-modal-title">
+            <div>
+              <p className="eyebrow">Pro preview</p>
+              <h2 id="pro-modal-title">Unlock Pro</h2>
+              <p>Payments are not enabled yet. This is a preview of the Pro plan.</p>
+            </div>
+            <button type="button" onClick={() => setIsProModalOpen(false)}>
+              Close
+            </button>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

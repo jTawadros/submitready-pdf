@@ -146,6 +146,7 @@ h3 {
 .settings-panel,
 .pricing-card,
 .info-card,
+.upgrade-card,
 .upload-zone,
 .empty-state,
 .page-card {
@@ -246,6 +247,27 @@ h3 {
   background: #fff7e8;
   color: #7b5318;
   margin-top: 12px;
+}
+
+.upgrade-card {
+  align-items: center;
+  background: #fffaf0;
+  border-color: #f0d39b;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 18px;
+}
+
+.upgrade-card h2 {
+  margin-bottom: 6px;
+}
+
+.upgrade-card p:not(.eyebrow) {
+  color: #5f5140;
+  line-height: 1.45;
+  margin-bottom: 0;
 }
 
 .clear-button {
@@ -388,6 +410,14 @@ select:focus {
   width: 100%;
 }
 
+.unlock-button {
+  background: #243b53;
+}
+
+.unlock-button:hover:not(:disabled) {
+  background: #172a3d;
+}
+
 .export-reminder {
   font-size: 0.92rem;
   text-align: center;
@@ -464,6 +494,10 @@ select:focus {
   border-color: #b8d8e2;
 }
 
+.pro-card .unlock-button {
+  white-space: nowrap;
+}
+
 .price {
   background: #eef5f7;
   border-radius: 999px;
@@ -486,6 +520,39 @@ select:focus {
 
 .footer strong {
   color: #172026;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgba(23, 32, 38, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 10;
+}
+
+.modal {
+  background: #fff;
+  border: 1px solid #dce4e7;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(23, 32, 38, 0.28);
+  display: grid;
+  gap: 18px;
+  max-width: 420px;
+  padding: 24px;
+  width: min(100%, 420px);
+}
+
+.modal h2 {
+  margin-bottom: 8px;
+}
+
+.modal p:not(.eyebrow) {
+  color: #53646c;
+  line-height: 1.45;
+  margin-bottom: 0;
 }
 
 @media (max-width: 920px) {
@@ -515,6 +582,7 @@ select:focus {
   }
 
   .upload-zone,
+  .upgrade-card,
   .pricing-card,
   .footer {
     align-items: stretch;
