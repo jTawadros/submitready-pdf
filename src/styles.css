@@ -44,6 +44,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
+a {
+  color: inherit;
+}
+
 .app-shell {
   min-height: 100vh;
   padding: 28px 18px 48px;
@@ -108,6 +112,23 @@ h3 {
   line-height: 1.6;
   margin-bottom: 0;
   max-width: 720px;
+}
+
+.hero-cta {
+  align-items: center;
+  background: #176b87;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-weight: 800;
+  min-height: 46px;
+  margin-top: 22px;
+  padding: 0 18px;
+  text-decoration: none;
+}
+
+.hero-cta:hover {
+  background: #10566d;
 }
 
 .hero-visual {
@@ -469,6 +490,27 @@ select:focus {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.faq-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.faq-item {
+  border-top: 1px solid #dce4e7;
+  padding-top: 14px;
+}
+
+.faq-item h3 {
+  margin-bottom: 6px;
+}
+
+.faq-item p {
+  color: #53646c;
+  line-height: 1.45;
+  margin-bottom: 0;
+}
+
 .workflow-grid {
   display: grid;
   gap: 14px;
@@ -512,14 +554,29 @@ select:focus {
   border-top: 1px solid #dce4e7;
   color: #53646c;
   display: flex;
-  gap: 10px;
+  gap: 18px;
   justify-content: space-between;
   margin-top: 36px;
   padding-top: 22px;
 }
 
+.footer div {
+  display: grid;
+  gap: 4px;
+}
+
 .footer strong {
   color: #172026;
+}
+
+.footer a {
+  color: #176b87;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
 }
 
 .modal-backdrop {
@@ -590,6 +647,11 @@ select:focus {
   }
 
   .upload-zone button {
+    width: 100%;
+  }
+
+  .hero-cta {
+    justify-content: center;
     width: 100%;
   }
 

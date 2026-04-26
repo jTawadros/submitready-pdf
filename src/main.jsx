@@ -326,6 +326,9 @@ function App() {
             Upload screenshots or phone photos, reorder them, rotate pages, compress the file,
             and download a submission-ready PDF. Your files never leave your browser.
           </p>
+          <a className="hero-cta" href="#upload-images">
+            Upload images
+          </a>
         </div>
         <div className="hero-visual" aria-hidden="true" />
         <div className="status-strip" aria-label="Current upload summary">
@@ -340,6 +343,7 @@ function App() {
       <section className="workspace" aria-label="PDF builder">
         <div className="builder-panel">
           <div
+            id="upload-images"
             className={`upload-zone ${isDragging ? "is-dragging" : ""}`}
             onDragEnter={(event) => {
               event.preventDefault();
@@ -620,9 +624,41 @@ function App() {
         </div>
       </section>
 
+      <section className="info-section" aria-label="Frequently asked questions">
+        <div className="section-heading">
+          <p className="eyebrow">FAQ</p>
+          <h2>Quick answers before you submit.</h2>
+        </div>
+        <div className="faq-grid">
+          <article className="faq-item">
+            <h3>Are my files uploaded?</h3>
+            <p>No. SubmitReady PDF processes images locally in your browser.</p>
+          </article>
+          <article className="faq-item">
+            <h3>Does this work for Canvas?</h3>
+            <p>Yes. Export a PDF here, open it once, then upload that file to Canvas.</p>
+          </article>
+          <article className="faq-item">
+            <h3>What file types are supported?</h3>
+            <p>JPG, PNG, WEBP, HEIC, and HEIF images are supported.</p>
+          </article>
+          <article className="faq-item">
+            <h3>Why is there a 5-page free limit?</h3>
+            <p>It keeps the free tool simple while previewing a Pro plan for larger submissions.</p>
+          </article>
+          <article className="faq-item">
+            <h3>Can I use this on my phone?</h3>
+            <p>Yes. Use your phone browser to select photos and download the finished PDF.</p>
+          </article>
+        </div>
+      </section>
+
       <footer className="footer">
-        <strong>SubmitReady PDF</strong>
-        <span>Local-first image to PDF tool for students</span>
+        <div>
+          <strong>SubmitReady PDF</strong>
+          <span>Local-first homework image to PDF converter</span>
+        </div>
+        <a href="mailto:hello@submitready.app">hello@submitready.app</a>
       </footer>
 
       {isProModalOpen && (
